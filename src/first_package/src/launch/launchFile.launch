@@ -1,0 +1,15 @@
+<launch>
+  <node
+    pkg="teleop_twist_keyboard_cpp"
+    type="teleop_twist_keyboard"
+    name="keyboard"
+    respawn="true"
+  />
+   <node
+    pkg="stage_ros"
+    type="stageros"
+    name="stageros"
+    launch-prefix="xterm -e"
+    args="$(find first_package)/world/simple.world"
+ />
+</launch>

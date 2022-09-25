@@ -1,0 +1,20 @@
+<launch>
+    <node
+        pkg="second_package"
+        type="helloWorld"
+        name="helloWorld"
+        launch-prefix="xterm -e"
+    />
+    <node
+        pkg="second_package"
+        type="listenerArob"
+        name="listenerArob"
+        launch-prefix="xterm -e"
+    />
+    <node
+        pkg="second_package"
+        type="talkerArob"
+        name="talkerArob"
+        launch-prefix="xterm -e"
+    />
+</launch>
