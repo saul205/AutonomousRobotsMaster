@@ -1,0 +1,3 @@
+[submodule "src/arob_lab2"]
+	path = src/arob_lab2
+	url = https://github.com/luisriazuelo/arob_lab2.git
