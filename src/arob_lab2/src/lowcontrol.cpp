@@ -25,10 +25,10 @@ public:
 		goal_sub_ = nh_.subscribe("goal", 1, &Lowlevelcontrol::goalCb, this);
 		velocity_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 		
-		Goal.pose.position.x = 0; //update the initial values of these variables
-		Goal.pose.position.y = 0;
-		kalpha = 0; // the values of these parameters should be obtained by you
-		krho = 0;
+		Goal.pose.position.x = -6; //update the initial values of these variables
+		Goal.pose.position.y = -6;
+		kalpha = 10; // the values of these parameters should be obtained by you
+		krho = 1;
 		kbeta = 0;
 	}
 
@@ -40,6 +40,9 @@ public:
 		std::cout << " Goal Update: "<< msg.pose.position.x << endl;
 		std::cout << " Goal Update: "<< msg.pose.position.y << endl;
 	//	upadte the goal
+
+		Goal.pose.position.x = msg.pose.position.x;
+		Goal.pose.position.y = msg.pose.position.y;
 	}
 
 	void positionCb(const nav_msgs::Odometry& msg) {
@@ -64,7 +67,21 @@ public:
 		std::cout << "Y: "<< msg.pose.pose.position.y << " ";
 		std::cout << "Th: "<< tf::getYaw(msg.pose.pose.orientation) << endl;
 
+		std::cout << "X: "<< Goal.pose.position.x << " ";
+		std::cout << "Y: "<< Goal.pose.position.y << " ";
+		std::cout << "Th: "<< tf::getYaw(Goal.pose.orientation) << endl;
+
+
+
 		geometry_msgs::Twist input; //to send the velocities
+
+		if(abs(rho) > 0.1){
+			input.linear.x = krho*rho;
+			input.angular.z = kbeta*beta + kalpha*alpha;
+		}else{
+			input.linear.x = 0;
+			input.angular.z = 0;
+		}
 
 		//here you have to implement the controller
 		velocity_pub_.publish(input);

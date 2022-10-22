@@ -1,4 +1,5 @@
 <launch>
   <node name="arob_lab2" pkg="stage_ros" type="stageros" args="$(find arob_lab2)/world/simple.world" output="screen"/>
   <node name="keyboards" pkg="arob_lab2" type="teleop_twist_keyboard" output="screen"/>
-</launch>
+  <node name="lowcontrol" pkg="arob_lab2" type="lowcontrol"/>
+  </launch>
