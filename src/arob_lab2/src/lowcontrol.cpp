@@ -71,8 +71,6 @@ public:
 		std::cout << "Y: "<< Goal.pose.position.y << " ";
 		std::cout << "Th: "<< tf::getYaw(Goal.pose.orientation) << endl;
 
-
-
 		geometry_msgs::Twist input; //to send the velocities
 
 		if(abs(rho) > 0.1){

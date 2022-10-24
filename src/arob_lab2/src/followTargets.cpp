@@ -33,7 +33,6 @@ public:
 			while(!inFile.eof()){
 			
 				targets.push_back(std::vector<float>{x, y});
-				cout << x << y << endl;
 				inFile >> x >> separator >> y >> separator;
 			}
 		}
@@ -51,6 +50,10 @@ public:
 		float ey = targets[currentTarget][1] - msg->pose.pose.position.y;
 		float distance = sqrt(ex * ex + ey * ey);  
 
+		// Send the goal every time because of 2 reasons:
+		//	- If the message gets lost it doesn't get the new goalç
+		//  - Due to the load time of the queues, executing both the lowlevelcontrol and followTargets on the same
+		//		launch file makes the first message get lost as the queue is not initialized.
 		if(distance < 0.2 && currentTarget < targets.size()-1){
 			sendNextTarget();
 		}else{
@@ -81,9 +84,11 @@ public:
 
 
 int main(int argc, char** argv) {
-	string filePath = "/home/arob/catkin_ws/src/arob_lab2/src/targets.txt";
-	if(argc == 2){
-		filePath = argv[1];
+
+	string filePath = "src/arob_lab2/src/targets.txt";
+
+	if(argc >= 2){
+		filePath = string(argv[1]);
 	}
 
 	ros::init(argc, argv, "followTargets");
