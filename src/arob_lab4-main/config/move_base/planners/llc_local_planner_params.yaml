@@ -1,0 +1,8 @@
+LLCLocalPlanner:
+  kalpha: 5
+  krho: 0.5
+  kbeta: 1
+  rho_th: 0.3
+  yaw_th: 0.2
+
+  local_distance: 0.7
