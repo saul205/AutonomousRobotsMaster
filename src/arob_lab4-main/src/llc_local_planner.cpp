@@ -107,6 +107,8 @@ namespace llc_local_planner{
 		costmap_ros_->getRobotPose(robot_pose);
 		geometry_msgs::PoseStamped goal = global_plan_.back();
 
+		cout << tf::getYaw(robot_pose.pose.orientation) << " " << tf::getYaw(goal.pose.orientation) << endl;
+
 		//Read obstacle information from the costmap
 		costmap_ = costmap_ros_->getCostmap();
 		for (unsigned int i=0; i<costmap_->getSizeInCellsX()-1; i++){
@@ -125,6 +127,8 @@ namespace llc_local_planner{
 				}
 			}
 		}
+
+		
 		
 		float ex = robot_pose.pose.position.x - goal.pose.position.x;
 		float ey = robot_pose.pose.position.y - goal.pose.position.y;
@@ -134,21 +138,22 @@ namespace llc_local_planner{
 		if (beta > M_PI) beta = -2*M_PI + beta;
 		float alpha = beta - tf::getYaw(robot_pose.pose.orientation);
 
+		beta = tf::getYaw(robot_pose.pose.orientation) - tf::getYaw(goal.pose.orientation);
+
 		cmd_vel.linear.x = krho_*rho;
 		cmd_vel.angular.z = kbeta_*beta + kalpha_*alpha;
 
+		cout << beta << " " << alpha << " -> " << cmd_vel.angular.z << endl;
+
 		if(isGoalReached()){
-			cout << "Goal Reached" << endl;
 			cmd_vel.linear.x = 0;
 			cmd_vel.angular.z = 0;
 		}
-		else if(euclideanDistance(robot_pose.pose, goal.pose) < rho_th_){
+/* 		else if(euclideanDistance(robot_pose.pose, goal.pose) < rho_th_){
 			cout << "Position reached" << endl;
 			cmd_vel.linear.x = 0;
 			cmd_vel.angular.z = 1;
-		}else{
-			cout << "Goal not reached" << endl;
-		}
+		} */
 
 		return true;
 	}
