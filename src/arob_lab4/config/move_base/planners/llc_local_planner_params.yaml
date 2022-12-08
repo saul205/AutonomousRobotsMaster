@@ -5,4 +5,4 @@ LLCLocalPlanner:
   rho_th: 0.5
   yaw_th: 0.5
 
-  local_distance: 2
+  local_distance: 0.7

@@ -143,17 +143,17 @@ namespace llc_local_planner{
 		cmd_vel.linear.x = krho_*rho;
 		cmd_vel.angular.z = kbeta_*beta + kalpha_*alpha;
 
-		cout << beta << " " << alpha << " -> " << cmd_vel.angular.z << endl;
+		//cout << beta << " " << alpha << " -> " << cmd_vel.angular.z << endl;
 
 		if(isGoalReached()){
 			cmd_vel.linear.x = 0;
 			cmd_vel.angular.z = 0;
 		}
-/* 		else if(euclideanDistance(robot_pose.pose, goal.pose) < rho_th_){
+		else if(euclideanDistance(robot_pose.pose, goal.pose) < rho_th_){
 			cout << "Position reached" << endl;
 			cmd_vel.linear.x = 0;
-			cmd_vel.angular.z = 1;
-		} */
+			cmd_vel.angular.z = (tf::getYaw(robot_pose.pose.orientation) - tf::getYaw(goal.pose.orientation)) * beta;
+		}
 
 		return true;
 	}

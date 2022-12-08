@@ -155,14 +155,15 @@ std::vector <std::vector <int>> TreeNode::returnSolution(){
 
 	std::vector <std::vector <int>> solution;
 	TreeNode *node = this;
-//	std::cout << "Start returning the solution" << std::endl;
+	//std::cout << "Start returning the solution" << std::endl;
 	while(node->hasParent()){
 		solution.push_back(node->getNode());
+        //node->printNode();
 		if(node->hasParent())
 			node = node->getParent();
-//		node->printNode();
+		
 	};
-//	std::cout << "Finish returning the solution" << std::endl;
+	//std::cout << "Finish returning the solution" << std::endl;
 	return solution;
 }
 

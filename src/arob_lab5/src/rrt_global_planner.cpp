@@ -4,6 +4,8 @@
 //register this planner as a BaseGlobalPlanner plugin
 PLUGINLIB_EXPORT_CLASS(rrt_planner::RRTPlanner, nav_core::BaseGlobalPlanner)
 
+using namespace std;
+
 //Default Constructor
 namespace rrt_planner {
 
@@ -116,48 +118,65 @@ bool RRTPlanner::computeRRT(const std::vector<int> start, const std::vector<int>
     TreeNode *goal_node = new TreeNode(goal);
 
     int n_samples = 0;
+    
+    int dist = distance(itr_node, goal_node);
     bool reachable = obstacleFree(start[0], start[1], goal[0], goal[1]);
-    while(!reachable || n_samples > max_samples_){
+    reachable = reachable && dist <= max_dist_;
+    while(!reachable){
 
         int sampleX = rand() % costmap_->getSizeInCellsX();
         int sampleY = rand() % costmap_->getSizeInCellsY();
-        while(costmap_->getCost(sampleX, sampleY) != costmap_2d::FREE_SPACE){
-            sampleX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * costmap_->getSizeInCellsX();
-            sampleY = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * costmap_->getSizeInCellsY();
+        while(costmap_->getCost(sampleX, sampleY) != costmap_2d::FREE_SPACE){ //costmap_->getCost(sampleX, sampleY) != costmap_2d::FREE_SPACE
+            sampleX = rand() % costmap_->getSizeInCellsX();
+            sampleY = rand() % costmap_->getSizeInCellsY();
         }
 
+        //cout << "Random sample " << sampleX << " " << sampleY << endl;
+
         TreeNode *new_node = new TreeNode(std::vector<int>{sampleX, sampleY});
+        //cout << "New Node: " << endl;
+        //new_node->printNode();
         TreeNode* near_node = new_node->neast(itr_node);
 
-        int dist = distance(new_node, near_node);
+        //cout << "Near Node: " << endl;
+        //near_node->printNode();
 
+        dist = distance(new_node, near_node);
         if(dist > max_dist_){
             std::vector<int> v{(near_node->getNode()[0]-new_node->getNode()[0]) * static_cast<int>(max_dist_) / dist
                             , (near_node->getNode()[1]-new_node->getNode()[1]) * static_cast<int>(max_dist_) / dist};
 
             new_node->getNode()[0] = near_node->getNode()[0] + v[0];
             new_node->getNode()[1] = near_node->getNode()[1] + v[1];
+        }else if(dist < max_dist_ / 2){
+            continue;
         }
 
         if(obstacleFree(new_node->getNode()[0], new_node->getNode()[1]
                             , near_node->getNode()[0], near_node->getNode()[1])){
             near_node->appendChild(new_node);
+
+            if(new_node->hasParent()){
+                dist = distance(new_node, goal_node);
+                reachable = obstacleFree(new_node->getNode()[0], new_node->getNode()[1], goal[0], goal[1]);
+                reachable = reachable && dist <= max_dist_;
+                if(reachable){
+                    //cout << "Reachable " << endl;
+                    //new_node->printNode();
+                    //goal_node->printNode();
+                    sol = new_node->returnSolution();
+                }   
+            }
         }
 
-        //dist = distance(new_node, goal_node);
-        reachable = obstacleFree(new_node->getNode()[0], new_node->getNode()[1], goal[0], goal[1]);
-        //reachable = reachable && dist <= max_dist_;
-        if(reachable){
-            sol = new_node->returnSolution();
-            finished = true;
-        }
-
-        n_samples++;
+        //n_samples++;
     }
-
+    
     itr_node->~TreeNode();
 
-    return finished;
+    cout << sol.size() << "  " << reachable << endl;
+
+    return reachable;
 }
 
 bool RRTPlanner::obstacleFree(const unsigned int x0, const unsigned int y0, 
