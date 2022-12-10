@@ -105,6 +105,11 @@ std::vector <int> TreeNode::getNode()
     return point;
 }
 
+void TreeNode::setNode(int x, int y){
+    point[0] = x;
+    point[1] = y;
+}
+
 void TreeNode::printNode() 
 {
 	std::cout << "Node: (" << point[0] << "," << point[1] << ")." << std::endl;

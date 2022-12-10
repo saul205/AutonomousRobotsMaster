@@ -73,6 +73,8 @@ namespace llc_local_planner{
 		// update obstacle info from costmap
 		costmap_ = costmap_ros_->getCostmap();
 
+		cout << "Plan size " << plan.size() << endl;
+
 		//Prune the plan to store the set of points within the local costmap
 		for (auto it = plan.begin(); it != plan.end(); ++it){
 
@@ -107,8 +109,6 @@ namespace llc_local_planner{
 		costmap_ros_->getRobotPose(robot_pose);
 		geometry_msgs::PoseStamped goal = global_plan_.back();
 
-		cout << tf::getYaw(robot_pose.pose.orientation) << " " << tf::getYaw(goal.pose.orientation) << endl;
-
 		//Read obstacle information from the costmap
 		costmap_ = costmap_ros_->getCostmap();
 		for (unsigned int i=0; i<costmap_->getSizeInCellsX()-1; i++){
@@ -138,7 +138,7 @@ namespace llc_local_planner{
 		if (beta > M_PI) beta = -2*M_PI + beta;
 		float alpha = beta - tf::getYaw(robot_pose.pose.orientation);
 
-		beta = tf::getYaw(robot_pose.pose.orientation) - tf::getYaw(goal.pose.orientation);
+		//beta = tf::getYaw(robot_pose.pose.orientation) - tf::getYaw(goal.pose.orientation);
 
 		cmd_vel.linear.x = krho_*rho;
 		cmd_vel.angular.z = kbeta_*beta + kalpha_*alpha;

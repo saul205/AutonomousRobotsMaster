@@ -32,6 +32,7 @@ class TreeNode
 
 
 		std::vector <int> getNode();
+        void setNode(int x, int y);
 		void printNode();
 		void printTree();
 

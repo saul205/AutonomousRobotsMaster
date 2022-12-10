@@ -35,6 +35,7 @@ private:
 	costmap_2d::Costmap2D* costmap_;
     std::string global_frame_id_;
 	bool initialized_;
+    ros::Publisher vis_pub;
 
     double max_samples_;
 

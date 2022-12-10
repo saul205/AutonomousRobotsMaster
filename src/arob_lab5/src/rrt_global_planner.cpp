@@ -45,6 +45,8 @@ void RRTPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_
         costmap_ = costmap_ros->getCostmap();
         global_frame_id_ = costmap_ros_->getGlobalFrameID();
 
+        vis_pub = nh.advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
+
         initialized_ = true;
     }
 	else{
@@ -118,12 +120,13 @@ bool RRTPlanner::computeRRT(const std::vector<int> start, const std::vector<int>
     TreeNode *goal_node = new TreeNode(goal);
 
     int n_samples = 0;
-    
+
+    double real_dist = max_dist_ / resolution_;
+
     int dist = distance(itr_node, goal_node);
     bool reachable = obstacleFree(start[0], start[1], goal[0], goal[1]);
-    reachable = reachable && dist <= max_dist_;
+    reachable = reachable && dist <= real_dist;
     while(!reachable){
-
         int sampleX = rand() % costmap_->getSizeInCellsX();
         int sampleY = rand() % costmap_->getSizeInCellsY();
         while(costmap_->getCost(sampleX, sampleY) != costmap_2d::FREE_SPACE){ //costmap_->getCost(sampleX, sampleY) != costmap_2d::FREE_SPACE
@@ -133,7 +136,7 @@ bool RRTPlanner::computeRRT(const std::vector<int> start, const std::vector<int>
 
         //cout << "Random sample " << sampleX << " " << sampleY << endl;
 
-        TreeNode *new_node = new TreeNode(std::vector<int>{sampleX, sampleY});
+        TreeNode* new_node = new TreeNode(std::vector<int>{sampleX, sampleY});
         //cout << "New Node: " << endl;
         //new_node->printNode();
         TreeNode* near_node = new_node->neast(itr_node);
@@ -142,34 +145,81 @@ bool RRTPlanner::computeRRT(const std::vector<int> start, const std::vector<int>
         //near_node->printNode();
 
         dist = distance(new_node, near_node);
-        if(dist > max_dist_){
-            std::vector<int> v{(near_node->getNode()[0]-new_node->getNode()[0]) * static_cast<int>(max_dist_) / dist
-                            , (near_node->getNode()[1]-new_node->getNode()[1]) * static_cast<int>(max_dist_) / dist};
-
-            new_node->getNode()[0] = near_node->getNode()[0] + v[0];
-            new_node->getNode()[1] = near_node->getNode()[1] + v[1];
-        }else if(dist < max_dist_ / 2){
+        if(dist > real_dist){
             continue;
         }
 
         if(obstacleFree(new_node->getNode()[0], new_node->getNode()[1]
                             , near_node->getNode()[0], near_node->getNode()[1])){
             near_node->appendChild(new_node);
+            visualization_msgs::Marker marker;
+            marker.header.frame_id = global_frame_id_;
+            marker.header.stamp = ros::Time();
+            marker.ns = "my_namespace";
+            marker.id = n_samples;
+            marker.type = visualization_msgs::Marker::CYLINDER;
+            marker.action = visualization_msgs::Marker::ADD;
+            costmap_->mapToWorld((unsigned int)new_node->getNode()[0], (unsigned int)new_node->getNode()[1], 
+                            marker.pose.position.x, marker.pose.position.y);
+            marker.pose.position.z = 0;
+            marker.pose.orientation.x = 0.0;
+            marker.pose.orientation.y = 0.0;
+            marker.pose.orientation.z = 0.0;
+            marker.pose.orientation.w = 1.0;
+            marker.scale.x = 0.1;
+            marker.scale.y = 0.1;
+            marker.scale.z = 0.1;
+            marker.color.a = 1.0; // Don't forget to set the alpha!
+            marker.color.r = 1.0;
+            marker.color.g = 0.0;
+            marker.color.b = 0.0;
+            vis_pub.publish(marker);
 
+            marker.header.frame_id = global_frame_id_;
+            marker.header.stamp = ros::Time();
+            marker.ns = "my_namespace";
+            marker.id = n_samples+1;
+            marker.type = visualization_msgs::Marker::LINE_STRIP;
+            marker.action = visualization_msgs::Marker::ADD;
+            geometry_msgs::Point a;
+            a.z = 0;
+            costmap_->mapToWorld((unsigned int)new_node->getNode()[0], (unsigned int)new_node->getNode()[1], 
+                            a.x, a.y);
+            geometry_msgs::Point b;
+            b.z = 0;
+            costmap_->mapToWorld((unsigned int)near_node->getNode()[0], (unsigned int)near_node->getNode()[1], 
+                            b.x, b.y);
+            marker.points = vector<geometry_msgs::Point>{a, b};
+            marker.pose.position.x = 0;
+            marker.pose.position.y = 0;
+            marker.pose.position.z = 0;
+            marker.pose.orientation.x = 0.0;
+            marker.pose.orientation.y = 0.0;
+            marker.pose.orientation.z = 0.0;
+            marker.pose.orientation.w = 1.0;
+            marker.scale.x = 0.1;
+            marker.scale.y = 0.1;
+            marker.scale.z = 0.1;
+            marker.color.a = 1.0; // Don't forget to set the alpha!
+            marker.color.r = 0.0;
+            marker.color.g = 1.0;
+            marker.color.b = 0.0;
+            vis_pub.publish(marker);
+
+            //cin.get();
+  
             if(new_node->hasParent()){
                 dist = distance(new_node, goal_node);
                 reachable = obstacleFree(new_node->getNode()[0], new_node->getNode()[1], goal[0], goal[1]);
-                reachable = reachable && dist <= max_dist_;
+                reachable = reachable && dist <= real_dist;
                 if(reachable){
-                    //cout << "Reachable " << endl;
-                    //new_node->printNode();
                     //goal_node->printNode();
                     sol = new_node->returnSolution();
                 }   
             }
         }
 
-        //n_samples++;
+        n_samples += 2;
     }
     
     itr_node->~TreeNode();
