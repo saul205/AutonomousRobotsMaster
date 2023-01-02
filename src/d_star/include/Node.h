@@ -5,6 +5,12 @@
 #include <vector>
 #include <geometry_msgs/PoseStamped.h>
 
+enum TAGS{
+    OPEN,
+    CLOSED,
+    NEW
+};
+
 class Node
 {
     private:
@@ -15,6 +21,10 @@ class Node
         int countNodesRec(Node *root, int& count);
 
     public:
+
+        float k, h;
+        TAGS tag;
+
         Node();
 		Node(std::vector <int> point_);
 		~Node();
