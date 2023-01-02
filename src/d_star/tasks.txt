@@ -1,0 +1,8 @@
+- Crear las funciones aux
+    - Insert -> meter en el OPEN
+    - Min_State -> estado con menor k en OPEN
+    - Min_Val -> devuelve menor k
+    - // Cost -> obtener coste entre 2 nodos ->
+    - Cost_Path -> coste de un camino 
+    - Process_state -> función principal
+    - Modify Cost
