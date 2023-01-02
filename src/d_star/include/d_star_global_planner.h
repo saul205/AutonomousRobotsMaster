@@ -17,12 +17,20 @@
 
 namespace d_star_planner {
 
+struct Cmp{
+    bool operator()(const Node* lhs, const Node* rhs) const { 
+        return lhs->k < rhs->k; 
+    }
+};
+
 class DStarPlanner : public nav_core::BaseGlobalPlanner {
     
 public:
 
     DStarPlanner();
     DStarPlanner(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
+
+    std::set<Node*, Cmp> open;
 
     // overridden classes from interface nav_core::BaseGlobalPlanner
     void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
@@ -47,6 +55,10 @@ private:
     bool computeDStar(const std::vector<int> start, const std::vector<int> goal, 
                             std::vector<std::vector<int>>& sol);
     void getPlan(const std::vector<std::vector<int>> sol, std::vector<geometry_msgs::PoseStamped>& plan);
+
+
+    //------------------------------------------------
+    void insert(Node * node, float h);
 };
 
 };

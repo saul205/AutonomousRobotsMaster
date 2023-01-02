@@ -170,4 +170,98 @@ void DStarPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<
     }
 }
 
+void DStarPlanner::insert(Node * node, float h){
+
+    if(node->tag == TAGS::NEW){
+        node->k = h;
+    }else if(node->tag == TAGS::OPEN){
+        node->k = min(node->k, h);
+    }else{
+        node->k = min(node->h, h);
+    }
+    
+    node->h = h;
+    node->tag = TAGS::OPEN;
+        
+    open.insert(node);
+}
+
+/*def process_state():
+    if len(open) <= 0: return -1
+
+    x = min_state()
+    if x.k < x.h:
+
+        for st in getNeighbors(x.pos):
+
+            if st.tag != 'NEW' and st.h <= x.k and x.h > st.h + cost(x, st):
+                x.b = st
+                x.h = st.h + cost(x, st)
+
+    if x.k == x.h:
+
+        for st in getNeighbors(x.pos):
+
+            if st.tag == 'NEW' or \
+                    (st.b == x and st.h != x.h + cost(x, st)) or \
+                    (st.b != x and st.h > x.h + cost(x, st)):
+                st.b = x
+                insert(st, x.h + cost(x, st))
+
+    else:
+
+        for st in getNeighbors(x.pos):
+
+            if st.tag == 'NEW' or \
+                    (st.b == x and st.h != x.h + cost(x, st)):
+
+                st.b = x
+                insert(st, x.h + cost(x, st))
+
+            else:
+
+                if st.b != x and st.h > x.h + cost(x, st) and x.tag == 'CLOSED':
+                    insert(x, x.h)
+
+                else:
+
+                    if st.b != x and x.h > st.h + cost(x, st) and st.tag == 'CLOSED' and st.h > x.k:
+                        insert(st, st.h)
+
+    return min_val()*/
+
+    Node min_state(){
+    if(open.size() <= 0){
+        return -1;
+    }
+    return open.begin().first;
+    set.erase(open.begin());
+
+}
+
+float min_val(){
+    if(open.size() <= 0){
+        return -1;
+    }
+    return open.begin().second;
+}
+
+float cost_path(Node start){
+    Node aux = start;
+    cost = 0;
+    while(aux.getParent().first != NULL && aux.getParent().first.getParent().first != aux){
+        cost += aux.getParent().second;
+        aux = aux.getParent().first;
+    }
+    return cost;
+}
+
+float modify_cost(Node X, Node Y){
+    costmap_->setCost(X.getNode[0], X.getNode[1], costmap_2d::LETHAL_OBSTACLE)
+
+    if(Y.tag == CLOSED){
+        insert(Y, Y.h);
+    }
+}
+
 };
