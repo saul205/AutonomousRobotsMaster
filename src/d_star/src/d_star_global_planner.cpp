@@ -46,6 +46,11 @@ void DStarPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costma
 
         vis_pub = nh.advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
 
+        current_plan = false;
+        current_path_value = 0;
+
+        initializeTree();
+
         initialized_ = true;
     }
 	else{
@@ -109,7 +114,59 @@ int distance(Node* node1, Node* node2){
 
 bool DStarPlanner::computeDStar(const std::vector<int> start, const std::vector<int> goal, 
                             std::vector<std::vector<int>>& sol){
-    
+                                
+    int width = costmap_->getSizeInCellsX();
+    int height = costmap_->getSizeInCellsY();
+
+    sol.clear();
+
+    if(start[0] == goal[0] && start[1] == goal[1]){
+        current_plan = false;
+        current_path_value = 0;
+        return true;
+    }
+
+    if(!current_plan){
+        open.clear();
+
+        open.insert(graph[goal[1] * width + goal[0]]);
+
+        Node* start_node = graph[start[1] * width + start[0]];
+
+        while(start_node->tag != TAGS::CLOSED && current_path_value >= 0){
+            current_path_value = process_state();
+        }
+
+        if(start_node->tag == TAGS::NEW){
+            cout << "No path" << endl;
+            return false;
+        }else
+            sol = start_node->returnSolution();
+
+        current_plan = true;
+    }
+    else{
+
+        Node* start_node = graph[start[1] * width + start[0]];
+        
+        for(std::pair<Node*, int> st : start_node->getNeighbours()){
+            vector<int> point = st.first->getNode();
+            if(costmap_->getCost(point[0], point[1]) != costmap_2d::FREE_SPACE){
+                modify_cost(st.first);
+            }
+        }
+
+        while(cost_path(start_node) > current_path_value >= 0)
+            current_path_value = process_state();
+
+        if(current_path_value < 10000000){
+            sol = start_node->returnSolution();
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
 }
 
 bool DStarPlanner::obstacleFree(const unsigned int x0, const unsigned int y0, 
@@ -170,7 +227,7 @@ void DStarPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<
     }
 }
 
-void DStarPlanner::insert(Node * node, float h){
+void DStarPlanner::insert(Node* node, float h){
 
     if(node->tag == TAGS::NEW){
         node->k = h;
@@ -184,6 +241,66 @@ void DStarPlanner::insert(Node * node, float h){
     node->tag = TAGS::OPEN;
         
     open.insert(node);
+}
+
+float DStarPlanner::process_state(){
+
+    if(open.empty()){
+        return -1;
+    }
+
+    Node* x = min_state();
+    if(x->k < x->h){
+        int i = 0;
+        for(std::pair<Node*, int> st : x->getNeighbours()){
+            if(st.first->tag != TAGS::NEW && st.first->h <= x->k && x->h > st.first->h + st.second){
+                x->setParent(i);
+                x->h = st.first->h + st.second;
+            }
+
+            i++;
+        }
+    }
+
+    if(x->k == x->h){
+        int i = 0;
+        for(std::pair<Node*, int> st : x->getNeighbours()){
+            if(st.first->tag == TAGS::NEW 
+                || ( st.first->getParent().first == x && st.first->h != x->h + st.second )
+                || ( st.first->getParent().first != x && st.first->h > x->h + st.second )){
+                st.first->setParent(x);
+                insert(st.first, x->h + st.second);
+            }
+
+            i++;
+        }
+    }
+    else{
+        int i = 0;
+        for(std::pair<Node*, int> st : x->getNeighbours()){
+
+            if(st.first->tag == TAGS::NEW 
+                || ( st.first->getParent().first == x && st.first->h != x->h + st.second )){
+                st.first->setParent(x);
+                insert(st.first, x->h + st.second);
+            }
+            else{
+                
+                if( st.first->getParent().first != x && st.first->h > x->h + st.second && x->tag == TAGS::CLOSED){
+                    insert(x, x->h);
+                }
+                else if(st.first->getParent().first != x && x->h > st.first->h + st.second && x->tag == TAGS::CLOSED && st.first->h > x->k)
+                {
+                    insert(st.first, st.first->h);
+                }
+
+            }
+
+            i++;
+        }
+    }
+
+    return min_val();
 }
 
 /*def process_state():
@@ -230,38 +347,99 @@ void DStarPlanner::insert(Node * node, float h){
 
     return min_val()*/
 
-    Node min_state(){
-    if(open.size() <= 0){
-        return -1;
+    Node* DStarPlanner::min_state(){
+        Node* aux = nullptr;
+        if(open.size() <= 0){
+            return aux;
+        }
+
+        aux = (*open.begin());
+        
+        open.erase(open.begin());
+        return aux;
     }
-    return open.begin().first;
-    set.erase(open.begin());
 
-}
+    float DStarPlanner::min_val(){
+        if(open.size() <= 0){
+            return -1;
+        }
 
-float min_val(){
-    if(open.size() <= 0){
-        return -1;
+        return (*open.begin())->k;
     }
-    return open.begin().second;
-}
 
-float cost_path(Node start){
-    Node aux = start;
-    cost = 0;
-    while(aux.getParent().first != NULL && aux.getParent().first.getParent().first != aux){
-        cost += aux.getParent().second;
-        aux = aux.getParent().first;
+    float DStarPlanner::cost_path(Node* start){
+        Node* aux = start;
+        float cost = 0.f;
+        while(aux->getParent().first != NULL/*&& aux->getParent().first.getParent().first != aux*/){
+            cost += aux->getParent().second;
+            aux = aux->getParent().first;
+        }
+        return cost;
     }
-    return cost;
-}
 
-float modify_cost(Node X, Node Y){
-    costmap_->setCost(X.getNode[0], X.getNode[1], costmap_2d::LETHAL_OBSTACLE)
+    float DStarPlanner::modify_cost(Node* X){
+        
+        vector<std::pair<Node*, int>> neighbours = X->getNeighbours();
+        for(int i = 0; i < neighbours.size(); i++){
+            neighbours[i].second += 10000000;
 
-    if(Y.tag == CLOSED){
-        insert(Y, Y.h);
+            vector<std::pair<Node*, int>> neighbours_n = neighbours[i].first->getNeighbours();
+            for(int j = 0; j < neighbours_n.size(); j++){
+                if(neighbours_n[j].first == X){
+                    neighbours_n[i].second += 10000000;
+                    break;
+                }
+            }
+            
+            if(neighbours[i].first->tag == CLOSED){
+                insert(neighbours[i].first, neighbours[i].first->h);
+            }
+        }
     }
-}
+    
+    void DStarPlanner::initializeTree(){
+        int width = costmap_->getSizeInCellsX();
+        int height = costmap_->getSizeInCellsY();
+
+        for(int i = 0; i < width; i++){
+            for(int j = 0; j < height; j++){
+                graph.push_back(new Node(std::vector<int>(i, j)));
+            }
+        }
+
+        for(int i = 0; i < width; i++){
+            for(int j = 0; j < height; j++){
+
+                if(i > 0){
+
+                    graph[j * width + i]->addNeighbour(graph[j * width + i - 1], 1);
+                    if( j > 0){
+                        graph[j * width + i]->addNeighbour(graph[(j-1) * width + i - 1], sqrt(2));
+                    }
+                    if( j < height - 1){
+                        graph[j * width + i]->addNeighbour(graph[(j+1) * width + i - 1], sqrt(2));
+                    }
+                }
+
+                if( j > 0){
+                     graph[j * width + i]->addNeighbour(graph[(j-1) * width + i], 1);
+                }
+
+                if(i < width - 1){
+                    graph[j * width + i]->addNeighbour(graph[j * width + i + 1], 1);
+                    if( j > 0){
+                        graph[j * width + i]->addNeighbour(graph[(j-1) * width + i + 1], sqrt(2));
+                    }
+                    if( j < height - 1){
+                        graph[j * width + i]->addNeighbour(graph[(j+1) * width + i + 1], sqrt(2));
+                    }
+                }
+
+                if(j < height - 1){
+                     graph[j * width + i]->addNeighbour(graph[(j+1) * width + i], 1);
+                }
+            }
+        }
+    }
 
 };

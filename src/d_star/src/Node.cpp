@@ -6,14 +6,14 @@
 
 Node::Node(){
     std::cout << "Constructor" << std::endl;
-	parent = std::pair<Node*, int>(NULL, -1);
+	parent_idx = -1;
 }
 
 Node::Node(std::vector <int> point_){
     // std::cout << "Constructor" << std::endl;
     // std::cout << "point_:" << point_[0] << ", " << point_[1] << std::endl;
     point = point_;
-    parent = std::pair<Node*, int>(NULL, -1);
+    parent_idx = -1;
 }
 
 Node::~Node(){
@@ -55,14 +55,27 @@ void Node::appendNeighbour(Node *neighbour, int cost)
     this->addNeighbour(neighbour, cost);
 }
 
-void Node::setParent(Node *theParent, int cost)
+void Node::setParent(Node *theParent)
 {
-    parent = std::pair<Node*, int>(theParent, cost);
+    for(int i = 0; i < neighbours.size(); i++){
+        if(neighbours[i].first == theParent){
+            parent_idx = i;
+            break;
+        }
+    }
+}
+
+void Node::setParent(int index)
+{
+    parent_idx = index;
 }
 
 bool Node::hasParent()
 {
-    if(parent.first != NULL)
+    if(parent_idx < 0)
+        return false;
+
+    if(neighbours[parent_idx].first != NULL)
         return true;
     else 
         return false;
@@ -70,7 +83,9 @@ bool Node::hasParent()
 
 std::pair<Node*, int> Node::getParent()
 {
-    return parent;
+    if(parent_idx < 0)
+        return std::pair<Node*, int>(nullptr, -1);
+    return neighbours[parent_idx];
 }
 
 std::vector<std::pair<Node*, int>> Node::getNeighbours()

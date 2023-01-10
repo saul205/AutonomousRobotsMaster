@@ -31,6 +31,7 @@ public:
     DStarPlanner(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
 
     std::set<Node*, Cmp> open;
+    std::vector<Node*> graph;
 
     // overridden classes from interface nav_core::BaseGlobalPlanner
     void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
@@ -43,6 +44,8 @@ private:
 	costmap_2d::Costmap2D* costmap_;
     std::string global_frame_id_;
 	bool initialized_;
+    bool current_plan;
+    float current_path_value;
     ros::Publisher vis_pub;
 
     double max_samples_;
@@ -58,7 +61,14 @@ private:
 
 
     //------------------------------------------------
+    float process_state();
     void insert(Node * node, float h);
+    Node* min_state();
+    float min_val();
+    float cost_path(Node* start);
+    float modify_cost(Node* X);
+
+    void initializeTree();
 };
 
 };
