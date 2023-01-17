@@ -7,10 +7,23 @@ project(d_star)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED)
-
+find_package(catkin REQUIRED COMPONENTS
+nav_core
+pluginlib
+geometry_msgs
+std_msgs
+nav_msgs
+roscpp
+rospy
+tf2
+tf2_ros
+tf2_geometry_msgs
+base_local_planner
+message_generation
+)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+find_package(Eigen3 REQUIRED)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -99,10 +112,11 @@ find_package(catkin REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES d_star
-#  CATKIN_DEPENDS other_catkin_pkg
+  INCLUDE_DIRS include
+  LIBRARIES d_star
+  CATKIN_DEPENDS nav_core pluginlib geometry_msgs std_msgs nav_msgs roscpp tf2 tf2_ros tf2_geometry_msgs base_local_planner message_runtime
 #  DEPENDS system_lib
+  DEPENDS EIGEN3
 )
 
 ###########
@@ -112,14 +126,16 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-# ${catkin_INCLUDE_DIRS}
+	include 
+	${catkin_INCLUDE_DIRS}
+	${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/d_star.cpp
-# )
+add_library(dstar_global_planner_lib src/d_star_global_planner.cpp src/Node.cpp)
+target_link_libraries(dstar_global_planner_lib ${catkin_LIBRARIES})
+
+set(CMAKE_CXX_FLAGS "-std=c++14 ${CMAKE_CXX_FLAGS}")
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

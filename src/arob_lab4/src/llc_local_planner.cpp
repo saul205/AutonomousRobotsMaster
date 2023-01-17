@@ -82,9 +82,11 @@ namespace llc_local_planner{
 			geometry_msgs::PoseStamped robot_pose;
 			costmap_ros_->getRobotPose(robot_pose);
 			if (costmap_->worldToMap((*it).pose.position.x, (*it).pose.position.y, mx, my))
-				if(euclideanDistance((*it).pose, robot_pose.pose) < local_distance_)
+				// if(euclideanDistance((*it).pose, robot_pose.pose) < local_distance_)
 					global_plan_.push_back((*it));
 		}
+
+		cout << "Global plan size" << global_plan_.size() << endl;
 
 		if (global_plan_.empty()){
 			ROS_WARN("Global plan empty");
@@ -109,6 +111,8 @@ namespace llc_local_planner{
 		costmap_ros_->getRobotPose(robot_pose);
 		geometry_msgs::PoseStamped goal = global_plan_.back();
 
+		cout << "ALgooo" << endl;
+
 		//Read obstacle information from the costmap
 		costmap_ = costmap_ros_->getCostmap();
 		for (unsigned int i=0; i<costmap_->getSizeInCellsX()-1; i++){
@@ -128,8 +132,9 @@ namespace llc_local_planner{
 			}
 		}
 
-		
-		
+		cout << "Robot: [" << robot_pose.pose.position.x << ", "  << robot_pose.pose.position.y << ", "  << robot_pose.pose.position.z << "] " << endl;
+		cout << "Goal: [" << goal.pose.position.x << ", "  << goal.pose.position.y << ", "  << goal.pose.position.z << "] " << endl;
+
 		float ex = robot_pose.pose.position.x - goal.pose.position.x;
 		float ey = robot_pose.pose.position.y - goal.pose.position.y;
 		float rho = sqrt(ex*ex+ey*ey);

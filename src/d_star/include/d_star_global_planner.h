@@ -11,17 +11,12 @@
 
 #include <time.h> 
 #include "Node.h"
+#include <forward_list>
 
 #ifndef D_STAR_PLANNER_CPP
 #define D_STAR_PLANNER_CPP
 
 namespace d_star_planner {
-
-struct Cmp{
-    bool operator()(const Node* lhs, const Node* rhs) const { 
-        return lhs->k < rhs->k; 
-    }
-};
 
 class DStarPlanner : public nav_core::BaseGlobalPlanner {
     
@@ -30,7 +25,7 @@ public:
     DStarPlanner();
     DStarPlanner(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
 
-    std::set<Node*, Cmp> open;
+    std::forward_list<Node*> open;
     std::vector<Node*> graph;
 
     // overridden classes from interface nav_core::BaseGlobalPlanner
@@ -40,6 +35,8 @@ public:
 
 private:
 
+    float obstacle_cost = 1000000;
+
     costmap_2d::Costmap2DROS* costmap_ros_;
 	costmap_2d::Costmap2D* costmap_;
     std::string global_frame_id_;
@@ -47,6 +44,7 @@ private:
     bool current_plan;
     float current_path_value;
     ros::Publisher vis_pub;
+    ros::Publisher plan_pub_;
 
     double max_samples_;
 
@@ -66,9 +64,12 @@ private:
     Node* min_state();
     float min_val();
     float cost_path(Node* start);
-    float modify_cost(Node* X);
+    void modify_cost(Node* X);
 
     void initializeTree();
+    float computeExtraCost(int x, int y, int x2, int y2);
+
+    void publishPlan(const std::vector<geometry_msgs::PoseStamped>& path);
 };
 
 };

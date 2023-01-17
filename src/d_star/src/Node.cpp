@@ -2,18 +2,22 @@
 #include <vector>
 #include <iostream>
 #include <geometry_msgs/PoseStamped.h>
-#include "d_star/include/Node.h"
+#include "Node.h"
 
 Node::Node(){
     std::cout << "Constructor" << std::endl;
 	parent_idx = -1;
+    tag = TAGS::NEW;
+    h = 0;
+    k = 0;
 }
 
-Node::Node(std::vector <int> point_){
-    // std::cout << "Constructor" << std::endl;
-    // std::cout << "point_:" << point_[0] << ", " << point_[1] << std::endl;
+Node::Node(std::vector<int> point_){
     point = point_;
     parent_idx = -1;
+    tag = TAGS::NEW;
+    h = 0;
+    k = 0;
 }
 
 Node::~Node(){
@@ -45,14 +49,18 @@ bool Node::hasNeighbours()
         return false;
 }
 
-void Node::addNeighbour(Node *neighbour, int cost){
-    this->neighbours.push_back(std::pair<Node*, int>(neighbour, cost));
+void Node::addNeighbour(Node *neighbour, float cost){
+    this->neighbours.push_back(std::pair<Node*, float>(neighbour, cost));
 }
 
-void Node::appendNeighbour(Node *neighbour, int cost)
+void Node::appendNeighbour(Node *neighbour, float cost)
 {       
     neighbour->addNeighbour(this, cost);
     this->addNeighbour(neighbour, cost);
+}
+
+void Node::modifyNeighbourCost(int idx, float cost){
+    this->neighbours[idx].second += cost;
 }
 
 void Node::setParent(Node *theParent)
@@ -81,14 +89,15 @@ bool Node::hasParent()
         return false;
 }
 
-std::pair<Node*, int> Node::getParent()
+std::pair<Node*, float> Node::getParent()
 {
     if(parent_idx < 0)
-        return std::pair<Node*, int>(nullptr, -1);
+        return std::pair<Node*, float>(nullptr, -1);
+
     return neighbours[parent_idx];
 }
 
-std::vector<std::pair<Node*, int>> Node::getNeighbours()
+std::vector<std::pair<Node*, float>> Node::getNeighbours()
 {   
     return neighbours;
 }
@@ -105,7 +114,7 @@ void Node::setNode(int x, int y){
 
 void Node::printNode() 
 {
-	std::cout << "Node: (" << point[0] << "," << point[1] << ")." << std::endl;
+	std::cout << "Node: (" << point[0] << "," << point[1] << ").-k: " << k << ", h: " << h << " tag: " << tag << std::endl;
 }
 
 void Node::printTree()
@@ -128,15 +137,18 @@ std::vector <std::vector <int>> Node::returnSolution(){
 
 	std::vector <std::vector <int>> solution;
 	Node *node = this;
-	//std::cout << "Start returning the solution" << std::endl;
+	std::cout << "Start returning the solution" << std::endl;
 	while(node->hasParent()){
-		solution.push_back(node->getNode());
+		
         //node->printNode();
-		if(node->hasParent())
-			node = node->getParent().first;
+		if(node->hasParent()){
+            node = node->getParent().first;
+            solution.push_back(node->getNode());
+        }
+			
 		
 	};
-	//std::cout << "Finish returning the solution" << std::endl;
+	std::cout << "Finish returning the solution" << std::endl;
 	return solution;
 }
 

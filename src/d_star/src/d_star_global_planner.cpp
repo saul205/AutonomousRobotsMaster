@@ -1,4 +1,5 @@
 #include <pluginlib/class_list_macros.h>
+#include <nav_msgs/Path.h>
 #include "d_star_global_planner.h"
 //register this planner as a BaseGlobalPlanner plugin
 PLUGINLIB_EXPORT_CLASS(d_star_planner::DStarPlanner, nav_core::BaseGlobalPlanner)
@@ -45,6 +46,7 @@ void DStarPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costma
         global_frame_id_ = costmap_ros_->getGlobalFrameID();
 
         vis_pub = nh.advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
+        plan_pub_ = nh.advertise<nav_msgs::Path>("plan", 1);
 
         current_plan = false;
         current_path_value = 0;
@@ -99,6 +101,7 @@ bool DStarPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geome
         getPlan(solRRT, plan);
         // add goal
         plan.push_back(goal);
+        publishPlan(plan);
     }else{
         ROS_WARN("No plan computed");
     }
@@ -114,59 +117,68 @@ int distance(Node* node1, Node* node2){
 
 bool DStarPlanner::computeDStar(const std::vector<int> start, const std::vector<int> goal, 
                             std::vector<std::vector<int>>& sol){
-                                
+    
     int width = costmap_->getSizeInCellsX();
     int height = costmap_->getSizeInCellsY();
-
     sol.clear();
 
     if(start[0] == goal[0] && start[1] == goal[1]){
-        current_plan = false;
+        cout << "Global path goal reached" << endl;
         current_path_value = 0;
+        return false;
+    }
+
+    open.clear();
+    open.push_front(graph[goal[0] * height + goal[1]]);
+
+    Node* start_node = graph[start[0] * height + start[1]];
+
+    while(start_node->tag != TAGS::CLOSED && current_path_value >= 0){
+        current_path_value = process_state();
+        //cout << "Current path value "  << current_path_value << endl;
+    }
+
+    if(start_node->tag == TAGS::NEW){
+        cout << "No path" << endl;
+        return false;
+    }
+
+    Node* actual = start_node;
+
+    while(actual != graph[goal[0] * height + goal[1]]){
+
+        /*
+        current_path_value = cost_path(actual);
+        for(std::pair<Node*, int> st : actual->getNeighbours()){
+            vector<int> point = st.first->getNode();
+            if(st.second < obstacle_cost && costmap_->getCost(point[0], point[1]) != costmap_2d::FREE_SPACE){
+                modify_cost(st.first);
+                cout << "Modified cost" << endl;
+            }
+        }*/
+        
+        current_path_value = cost_path(actual);
+        vector<int> point = actual->getNode();
+        if(costmap_->getCost(point[0], point[1]) != costmap_2d::FREE_SPACE){
+            modify_cost(actual);
+        }
+        
+        
+        while(cost_path(actual) > current_path_value && current_path_value >= 0){
+            current_path_value = process_state();
+        }
+
+        actual = actual->getParent().first;
+    }
+
+    if(cost_path(start_node) < obstacle_cost){
+        sol = start_node->returnSolution();
         return true;
     }
-
-    if(!current_plan){
-        open.clear();
-
-        open.insert(graph[goal[1] * width + goal[0]]);
-
-        Node* start_node = graph[start[1] * width + start[0]];
-
-        while(start_node->tag != TAGS::CLOSED && current_path_value >= 0){
-            current_path_value = process_state();
-        }
-
-        if(start_node->tag == TAGS::NEW){
-            cout << "No path" << endl;
-            return false;
-        }else
-            sol = start_node->returnSolution();
-
-        current_plan = true;
-    }
     else{
-
-        Node* start_node = graph[start[1] * width + start[0]];
-        
-        for(std::pair<Node*, int> st : start_node->getNeighbours()){
-            vector<int> point = st.first->getNode();
-            if(costmap_->getCost(point[0], point[1]) != costmap_2d::FREE_SPACE){
-                modify_cost(st.first);
-            }
-        }
-
-        while(cost_path(start_node) > current_path_value >= 0)
-            current_path_value = process_state();
-
-        if(current_path_value < 10000000){
-            sol = start_node->returnSolution();
-            return true;
-        }
-        else{
-            return false;
-        }
+        return false;
     }
+    
 }
 
 bool DStarPlanner::obstacleFree(const unsigned int x0, const unsigned int y0, 
@@ -213,7 +225,7 @@ bool DStarPlanner::obstacleFree(const unsigned int x0, const unsigned int y0,
 
 void DStarPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<geometry_msgs::PoseStamped>& plan){
 
-    for (auto it = sol.rbegin(); it != sol.rend(); it++){
+    for (auto it = sol.begin(); it != sol.end(); it++){
         std::vector<int> point = (*it);
         geometry_msgs::PoseStamped pose;
 
@@ -223,7 +235,6 @@ void DStarPlanner::getPlan(const std::vector<std::vector<int>> sol, std::vector<
         pose.header.frame_id = global_frame_id_;
         pose.pose.orientation.w = 1;
         plan.push_back(pose);
-
     }
 }
 
@@ -239,8 +250,30 @@ void DStarPlanner::insert(Node* node, float h){
     
     node->h = h;
     node->tag = TAGS::OPEN;
-        
-    open.insert(node);
+
+    bool in = false;
+    for(auto it = open.begin(); it != open.end(); it++){
+        if((*it) == node){
+            in = true;
+        }
+    }
+
+    if(!in)
+        open.push_front(node);
+
+    open.sort([ ]( const Node* lhs, const Node* rhs )
+        {
+        return lhs->k < rhs->k;
+        });
+
+    open.unique();
+/*
+    for(auto it = open.begin(); it != open.end(); it++){
+        (*it)->printNode();
+    }
+
+    cin.get();
+    */
 }
 
 float DStarPlanner::process_state(){
@@ -252,7 +285,7 @@ float DStarPlanner::process_state(){
     Node* x = min_state();
     if(x->k < x->h){
         int i = 0;
-        for(std::pair<Node*, int> st : x->getNeighbours()){
+        for(std::pair<Node*, float> st : x->getNeighbours()){
             if(st.first->tag != TAGS::NEW && st.first->h <= x->k && x->h > st.first->h + st.second){
                 x->setParent(i);
                 x->h = st.first->h + st.second;
@@ -261,10 +294,9 @@ float DStarPlanner::process_state(){
             i++;
         }
     }
-
     if(x->k == x->h){
         int i = 0;
-        for(std::pair<Node*, int> st : x->getNeighbours()){
+        for(std::pair<Node*, float> st : x->getNeighbours()){
             if(st.first->tag == TAGS::NEW 
                 || ( st.first->getParent().first == x && st.first->h != x->h + st.second )
                 || ( st.first->getParent().first != x && st.first->h > x->h + st.second )){
@@ -277,7 +309,7 @@ float DStarPlanner::process_state(){
     }
     else{
         int i = 0;
-        for(std::pair<Node*, int> st : x->getNeighbours()){
+        for(std::pair<Node*, float> st : x->getNeighbours()){
 
             if(st.first->tag == TAGS::NEW 
                 || ( st.first->getParent().first == x && st.first->h != x->h + st.second )){
@@ -303,143 +335,151 @@ float DStarPlanner::process_state(){
     return min_val();
 }
 
-/*def process_state():
-    if len(open) <= 0: return -1
-
-    x = min_state()
-    if x.k < x.h:
-
-        for st in getNeighbors(x.pos):
-
-            if st.tag != 'NEW' and st.h <= x.k and x.h > st.h + cost(x, st):
-                x.b = st
-                x.h = st.h + cost(x, st)
-
-    if x.k == x.h:
-
-        for st in getNeighbors(x.pos):
-
-            if st.tag == 'NEW' or \
-                    (st.b == x and st.h != x.h + cost(x, st)) or \
-                    (st.b != x and st.h > x.h + cost(x, st)):
-                st.b = x
-                insert(st, x.h + cost(x, st))
-
-    else:
-
-        for st in getNeighbors(x.pos):
-
-            if st.tag == 'NEW' or \
-                    (st.b == x and st.h != x.h + cost(x, st)):
-
-                st.b = x
-                insert(st, x.h + cost(x, st))
-
-            else:
-
-                if st.b != x and st.h > x.h + cost(x, st) and x.tag == 'CLOSED':
-                    insert(x, x.h)
-
-                else:
-
-                    if st.b != x and x.h > st.h + cost(x, st) and st.tag == 'CLOSED' and st.h > x.k:
-                        insert(st, st.h)
-
-    return min_val()*/
-
-    Node* DStarPlanner::min_state(){
-        Node* aux = nullptr;
-        if(open.size() <= 0){
-            return aux;
-        }
-
-        aux = (*open.begin());
-        
-        open.erase(open.begin());
+Node* DStarPlanner::min_state(){
+    Node* aux = nullptr;
+    if(open.empty()){
         return aux;
     }
 
-    float DStarPlanner::min_val(){
-        if(open.size() <= 0){
-            return -1;
-        }
+    aux = open.front();
+    open.pop_front();
+    aux->tag = TAGS::CLOSED;
+    return aux;
+}
 
-        return (*open.begin())->k;
+float DStarPlanner::min_val(){
+    if(open.empty()){
+        return -1;
     }
 
-    float DStarPlanner::cost_path(Node* start){
-        Node* aux = start;
-        float cost = 0.f;
-        while(aux->getParent().first != NULL/*&& aux->getParent().first.getParent().first != aux*/){
-            cost += aux->getParent().second;
-            aux = aux->getParent().first;
-        }
-        return cost;
-    }
+    return (*open.begin())->k;
+}
 
-    float DStarPlanner::modify_cost(Node* X){
-        
-        vector<std::pair<Node*, int>> neighbours = X->getNeighbours();
-        for(int i = 0; i < neighbours.size(); i++){
-            neighbours[i].second += 10000000;
-
-            vector<std::pair<Node*, int>> neighbours_n = neighbours[i].first->getNeighbours();
-            for(int j = 0; j < neighbours_n.size(); j++){
-                if(neighbours_n[j].first == X){
-                    neighbours_n[i].second += 10000000;
-                    break;
-                }
-            }
-            
-            if(neighbours[i].first->tag == CLOSED){
-                insert(neighbours[i].first, neighbours[i].first->h);
-            }
-        }
+float DStarPlanner::cost_path(Node* start){
+    Node* aux = start;
+    float cost = 0.f;
+    while(aux->getParent().first != NULL/*&& aux->getParent().first.getParent().first != aux*/){
+        cost += aux->getParent().second;
+        aux = aux->getParent().first;
     }
+    return cost;
+}
+
+void DStarPlanner::modify_cost(Node* X){
     
-    void DStarPlanner::initializeTree(){
-        int width = costmap_->getSizeInCellsX();
-        int height = costmap_->getSizeInCellsY();
+    vector<std::pair<Node*, float>> neighbours = X->getNeighbours();
+    for(int i = 0; i < neighbours.size(); i++){
+        X->modifyNeighbourCost(i, obstacle_cost);
 
-        for(int i = 0; i < width; i++){
-            for(int j = 0; j < height; j++){
-                graph.push_back(new Node(std::vector<int>(i, j)));
+        vector<std::pair<Node*, float>> neighbours_n = neighbours[i].first->getNeighbours();
+        for(int j = 0; j < neighbours_n.size(); j++){
+            if(neighbours_n[j].first == X){
+                neighbours[i].first->modifyNeighbourCost(j, obstacle_cost);
+                break;
             }
         }
+        
+        if(neighbours[i].first->tag == CLOSED){
+            insert(neighbours[i].first, neighbours[i].first->h);
+        }
+    }
+}
 
-        for(int i = 0; i < width; i++){
-            for(int j = 0; j < height; j++){
+void DStarPlanner::initializeTree(){
+    int width = costmap_->getSizeInCellsX();
+    int height = costmap_->getSizeInCellsY();
 
-                if(i > 0){
+    for(int i = 0; i < width; i++){
+        for(int j = 0; j < height; j++){
+            Node* n = new Node(std::vector<int>{i, j});
+            graph.push_back(n);
+        }
+    }
 
-                    graph[j * width + i]->addNeighbour(graph[j * width + i - 1], 1);
-                    if( j > 0){
-                        graph[j * width + i]->addNeighbour(graph[(j-1) * width + i - 1], sqrt(2));
-                    }
-                    if( j < height - 1){
-                        graph[j * width + i]->addNeighbour(graph[(j+1) * width + i - 1], sqrt(2));
-                    }
-                }
+    // for(int i = 0; i < width; i++){
+    //     for(int j = 0; j < height; j++){
+    //         graph[i * height + j]->printNode();
+    //     }
+    // }
 
+    for(int i = 0; i < width; i++){
+        for(int j = 0; j < height; j++){
+
+            if(i > 0){
+
+                graph[i * height + j]->addNeighbour(graph[(i - 1) * height + j], 1 + computeExtraCost(i, j, i-1, j));
                 if( j > 0){
-                     graph[j * width + i]->addNeighbour(graph[(j-1) * width + i], 1);
+                    graph[i * height + j]->addNeighbour(graph[(i-1) * height + j - 1], sqrt(2) + computeExtraCost(i, j, i-1, j-1));
                 }
+                if( j < height - 1){
+                    graph[i * height + j]->addNeighbour(graph[(i-1) * height + j + 1], sqrt(2)+ computeExtraCost(i, j, i-1, j+1));
+                }
+            }
 
-                if(i < width - 1){
-                    graph[j * width + i]->addNeighbour(graph[j * width + i + 1], 1);
-                    if( j > 0){
-                        graph[j * width + i]->addNeighbour(graph[(j-1) * width + i + 1], sqrt(2));
-                    }
-                    if( j < height - 1){
-                        graph[j * width + i]->addNeighbour(graph[(j+1) * width + i + 1], sqrt(2));
-                    }
-                }
+            if( j > 0){
+                    graph[i * height + j]->addNeighbour(graph[(i) * height + j - 1], 1+ computeExtraCost(i, j, i, j-1));
+            }
 
-                if(j < height - 1){
-                     graph[j * width + i]->addNeighbour(graph[(j+1) * width + i], 1);
+            if(i < width - 1){
+                graph[i * height + j]->addNeighbour(graph[(i+1) * height + j], 1+ computeExtraCost(i, j, i+1, j));
+                if( j > 0){
+                    graph[i * height + j]->addNeighbour(graph[(i+1) * height + j - 1], sqrt(2)+ computeExtraCost(i, j, i+1, j-1));
                 }
+                if( j < height - 1){
+                    graph[i * height + j]->addNeighbour(graph[(i+1) * height + j + 1], sqrt(2)+ computeExtraCost(i, j, i+1, j+1));
+                }
+            }
+
+            if(j < height - 1){
+                    graph[i * height + j]->addNeighbour(graph[(i) * height + j + 1], 1+ computeExtraCost(i, j, i, j+1));
             }
         }
     }
+
+    // cout << width << ", " << height << endl;
+    // cin.get();
+    // for(int j = 0; j < height; j+=2){
+    //     for(int i = 0; i < height; i+=2){
+    //         if(costmap_->getCost(graph[i * height + j]->getNode()[0], graph[i * height + j]->getNode()[1]) != costmap_2d::FREE_SPACE){
+    //             cout << "x";
+    //         }
+    //         else{
+    //             cout << "_";
+    //         }
+    //     }
+    //     cout << endl;
+    // }
+
+    // cin.get();
+}
+
+float DStarPlanner::computeExtraCost(int x, int y, int x2, int y2){
+    if(costmap_->getCost(x, y) != costmap_2d::FREE_SPACE || costmap_->getCost(x2, y2) != costmap_2d::FREE_SPACE){
+        return obstacle_cost;
+    }
+
+    return 0;
+}
+
+void DStarPlanner::publishPlan(const std::vector<geometry_msgs::PoseStamped>& path) {
+    if (!initialized_) {
+        ROS_ERROR(
+                "This planner has not been initialized yet, but it is being used, please call initialize() before use");
+        return;
+    }
+
+    //create a message for the plan
+    nav_msgs::Path gui_path;
+    gui_path.header.frame_id = global_frame_id_;
+    gui_path.poses.resize(path.size());
+    gui_path.header.stamp = ros::Time::now();
+
+    // Extract the plan in world co-ordinates, we assume the path is all in the same frame
+    for (unsigned int i = 0; i < path.size(); i++) {
+        gui_path.poses[i] = path[i];
+    }
+
+    plan_pub_.publish(gui_path);
+}
 
 };

@@ -16,7 +16,7 @@ class Node
     private:
         std::vector <int> point;
         int parent_idx;
-        std::vector<std::pair<Node*, int>> neighbours;
+        std::vector<std::pair<Node*, float>> neighbours;
 
         int countNodesRec(Node *root, int& count);
 
@@ -29,16 +29,17 @@ class Node
 		Node(std::vector <int> point_);
 		~Node();
 		bool hasNeighbours();
-        void addNeighbour(Node* neighbour, int cost);
-        void appendNeighbour(Node *neighbour, int cost);
+        void addNeighbour(Node* neighbour, float cost);
+        void appendNeighbour(Node *neighbour, float cost);
+        void modifyNeighbourCost(int idx, float cost);
         void setParent(Node *parent);
         void setParent(int index);
 
         bool hasNeighbours() const { return neighbours.size() > 0; }
         bool hasParent();
 
-        std::pair<Node*, int> getParent();
-        std::vector<std::pair<Node*, int>> Node::getNeighbours();
+        std::pair<Node*, float> getParent();
+        std::vector<std::pair<Node*, float>> getNeighbours();
 
 		std::vector <int> getNode();
         void setNode(int x, int y);
