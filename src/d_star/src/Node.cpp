@@ -6,7 +6,7 @@
 
 Node::Node(){
     std::cout << "Constructor" << std::endl;
-	parent_idx = -1;
+	parent = nullptr;
     tag = TAGS::NEW;
     h = 0;
     k = 0;
@@ -14,7 +14,7 @@ Node::Node(){
 
 Node::Node(std::vector<int> point_){
     point = point_;
-    parent_idx = -1;
+    parent = nullptr;
     tag = TAGS::NEW;
     h = 0;
     k = 0;
@@ -39,67 +39,58 @@ Node::~Node(){
     this->point.clear();
     this->children.clear();
     this->parent = NULL;*//////////////////////////    
-} 
-
-bool Node::hasNeighbours()
-{
-    if(neighbours.size() > 0)
-        return true;
-    else
-        return false;
-}
-
-void Node::addNeighbour(Node *neighbour, float cost){
-    this->neighbours.push_back(std::pair<Node*, float>(neighbour, cost));
-}
-
-void Node::appendNeighbour(Node *neighbour, float cost)
-{       
-    neighbour->addNeighbour(this, cost);
-    this->addNeighbour(neighbour, cost);
-}
-
-void Node::modifyNeighbourCost(int idx, float cost){
-    this->neighbours[idx].second += cost;
 }
 
 void Node::setParent(Node *theParent)
 {
-    for(int i = 0; i < neighbours.size(); i++){
-        if(neighbours[i].first == theParent){
-            parent_idx = i;
-            break;
-        }
-    }
-}
-
-void Node::setParent(int index)
-{
-    parent_idx = index;
+    parent = theParent;
 }
 
 bool Node::hasParent()
 {
-    if(parent_idx < 0)
-        return false;
-
-    if(neighbours[parent_idx].first != NULL)
-        return true;
-    else 
-        return false;
+    return parent != nullptr;
 }
 
-std::pair<Node*, float> Node::getParent()
+Node* Node::getParent()
 {
-    if(parent_idx < 0)
-        return std::pair<Node*, float>(nullptr, -1);
-
-    return neighbours[parent_idx];
+    return parent;
 }
 
-std::vector<std::pair<Node*, float>> Node::getNeighbours()
+std::vector<Node*> Node::getNeighbours(const std::vector<std::vector<Node*>>& graph)
 {   
-    return neighbours;
+    std::vector<Node*> n;
+
+    if(point[0] > 0){
+
+        n.push_back(graph[point[0]-1][point[1]]);
+        if( point[1] > 0){
+            n.push_back(graph[point[0]-1][point[1]-1]);
+        }
+        if( point[1] < graph[point[0]].size() - 1){
+            n.push_back(graph[point[0]-1][point[1]+1]);
+        }
+    }
+
+    if(point[0] < graph.size() - 1){
+
+        n.push_back(graph[point[0]+1][point[1]]);
+        if( point[1] > 0){
+            n.push_back(graph[point[0]+1][point[1]-1]);
+        }
+        if( point[1] < graph[point[0]].size() - 1){
+            n.push_back(graph[point[0]+1][point[1]+1]);
+        }
+    }
+
+    if(point[1] < 0){
+        n.push_back(graph[point[0]][point[1]-1]);
+    }
+
+    if(point[1] < graph[point[0]].size() - 1){
+        n.push_back(graph[point[0]][point[1]+1]);
+    }
+
+    return n;
 }
 
 std::vector <int> Node::getNode() 
@@ -117,22 +108,6 @@ void Node::printNode()
 	std::cout << "Node: (" << point[0] << "," << point[1] << ").-k: " << k << ", h: " << h << " tag: " << tag << std::endl;
 }
 
-void Node::printTree()
-{   
-    Node *child = NULL;
-    
-    std::cout << "Parent node: (" << point[0] << "," << point[1] << ")." << std::endl;
-	
-    for(int it = 0; it < neighbours.size(); it++)
-    {   
-        std::cout << "    Child node: (" << neighbours[it].first->point[0] << "," << neighbours[it].first->point[1] << ")." << std::endl;
-    }
-    for(int it = 0; it < neighbours.size(); it++)
-    {   
-        neighbours[it].first->printTree();
-    }
-}
-
 std::vector <std::vector <int>> Node::returnSolution(){
 
 	std::vector <std::vector <int>> solution;
@@ -142,11 +117,9 @@ std::vector <std::vector <int>> Node::returnSolution(){
 		
         //node->printNode();
 		if(node->hasParent()){
-            node = node->getParent().first;
+            node = node->getParent();
             solution.push_back(node->getNode());
         }
-			
-		
 	};
 	std::cout << "Finish returning the solution" << std::endl;
 	return solution;

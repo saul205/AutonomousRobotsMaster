@@ -26,7 +26,8 @@ public:
     DStarPlanner(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
 
     std::forward_list<Node*> open;
-    std::vector<Node*> graph;
+    std::vector<std::vector<Node*>> graph;
+    std::vector<int> actual_goal;
 
     // overridden classes from interface nav_core::BaseGlobalPlanner
     void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
@@ -70,6 +71,7 @@ private:
     float computeExtraCost(int x, int y, int x2, int y2);
 
     void publishPlan(const std::vector<geometry_msgs::PoseStamped>& path);
+    float cost(Node* a, Node* b);
 };
 
 };

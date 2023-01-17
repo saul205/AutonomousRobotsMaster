@@ -7,9 +7,9 @@ define block model
 
 define u model
 (
-  size [ 3.000 1.500 1.000]
+  size [ 4.000 1.500 1.000]
   pose [0 0 0 0]
-  bitmap "u.pgm"
+  bitmap "u_thin.png"
 )
 
 define target model
