@@ -157,21 +157,21 @@ bool DStarPlanner::computeDStar(const std::vector<int> start, const std::vector<
             }
         }*/
         
-        current_path_value = cost_path(actual);
+        current_path_value = actual->h;
         vector<int> point = actual->getNode();
         if(costmap_->getCost(point[0], point[1]) != costmap_2d::FREE_SPACE){
             modify_cost(actual);
         }
         
         
-        while(cost_path(actual) > current_path_value && current_path_value >= 0){
+        while(actual->h > current_path_value && current_path_value >= 0){
             current_path_value = process_state();
         }
 
         actual = actual->getParent().first;
     }
 
-    if(cost_path(start_node) < obstacle_cost){
+    if(actual->h < obstacle_cost){
         sol = start_node->returnSolution();
         return true;
     }
@@ -354,19 +354,19 @@ float DStarPlanner::min_val(){
 
     return (*open.begin())->k;
 }
-
+/*
 float DStarPlanner::cost_path(Node* start){
     Node* aux = start;
     float cost = 0.f;
-    while(aux->getParent().first != NULL/*&& aux->getParent().first.getParent().first != aux*/){
+    while(aux->getParent().first != NULL && aux->getParent().first.getParent().first != aux){
         cost += aux->getParent().second;
         aux = aux->getParent().first;
     }
     return cost;
 }
-
+*/
 void DStarPlanner::modify_cost(Node* X){
-    
+    X->h += obstacle_cost;
     vector<std::pair<Node*, float>> neighbours = X->getNeighbours();
     for(int i = 0; i < neighbours.size(); i++){
         X->modifyNeighbourCost(i, obstacle_cost);

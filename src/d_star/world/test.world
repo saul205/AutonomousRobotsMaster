@@ -87,12 +87,12 @@ floorplan
   size [16.000 16.000 0.800]
   pose [0 0 0 0]
   #map_resolution 0.032
-  bitmap "corridor.png"
+  bitmap "blank.png"
 )
 
 
 # throw in a robot
-erratic( pose [ -7 -7 0 0 ] name "Audrie" color "blue")
+erratic( pose [ 0 -7 0 0 ] name "Audrie" color "blue")
 block( pose [ 4 4 0 0 ] name "obstacle" color "red")
 u( pose [ 1 1 0 0] name "u" color "red" )
 #target( pose [ -3 0 0 0 ] color "yellow")

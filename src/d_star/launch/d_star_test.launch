@@ -35,7 +35,7 @@
 	<param name="base_frame_id" value="base_link" />
 
 	<!-- Initial position -->
-	<param name="initial_pose_x" value="-7" />
+	<param name="initial_pose_x" value="0" />
     <param name="initial_pose_y" value="-7" />
     <param name="initial_pose_a" value="0" />
     	
